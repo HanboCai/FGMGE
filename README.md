@@ -1,6 +1,4 @@
-# R
-
-Sample code to let you create your own adversarial examples! [Paper linked here](https://arxiv.org/abs/1805.07820).
+# README
 
 ## Installation
 Note: linux platform required as this code uses an old version of tensorflow (1.8).
@@ -31,5 +29,3 @@ Now create and run an attack, for example:
 python FGMG.py sample_input.wav "right"
 ``` 
 Of course, `sample_input.wav` may be changed to any input audio file and `"hello world"` may be changed to any target transcription.
-
-You can also listen to pre-created audio samples in the [samples](samples/) directory. Each original/adversarial pair is denoted by a leading number, with model transcriptions as the title.
