@@ -8,13 +8,6 @@ import random
 from scipy.signal import butter, lfilter
 from time import *
 
-###########################################################################
-# This section of code is credited to:
-## Copyright (C) 2017, Nicholas Carlini <nicholas@carlini.com>.
-
-# Okay, so this is ugly. We don't want DeepSpeech to crash.
-# So we're just going to monkeypatch TF and make some things a no-op.
-# Sue me.
 tf.load_op_library = lambda x: x
 generation_tmp = os.path.exists
 os.path.exists = lambda x: True
