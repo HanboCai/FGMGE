@@ -26,6 +26,6 @@ DeepSpeech may throw a warning saying "decoder library file does not exist" but 
 ## Running Attacks
 Now create and run an attack, for example:
 ```bash
-python FGMG.py sample_input.wav "right"
+python F-GMGE.py sample_input.wav "right"
 ``` 
 Of course, `sample_input.wav` may be changed to any input audio file and `"hello world"` may be changed to any target transcription.
