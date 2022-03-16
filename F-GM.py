@@ -7,6 +7,9 @@ import math
 import copy
 sys.path.append("DeepSpeech")
 import random
+from deap import base
+from deap import creator
+from deap import tools
 from scipy.signal import butter, lfilter
 from time import *
 
@@ -19,6 +22,7 @@ ALPHA = 1   #alpha's value will be changed
 tf.load_op_library = lambda x: x
 generation_tmp = os.path.exists
 os.path.exists = lambda x: True
+toolbox = base.Toolbox()
 
 class Wrapper:
     def __init__(self, d):
@@ -104,7 +108,9 @@ def mutate_pop(pop, mutation_p, noise_stdev):
     #mask = np.random.rand(pop.shape[0], elite_pop.shape[1]) < mutation_p
     mask = np.random.rand(pop.shape[0], pop.shape[1]) < mutation_p
     new_pop = pop + noise * mask
-    return new_pop
+    mutant = toolbox.clone(new_pop)
+    ind2, = tools.mutGaussian(mutant, mu=0.0001, sigma=0.2, indpb=0.2)
+    return ind2
 
 class Genetic():
     
@@ -123,7 +129,6 @@ class Genetic():
         self.delta_for_perturbation = 1e3
         self.input_audio = load_wav(input_wave_file).astype(np.float32)
         self.pop = np.expand_dims(self.input_audio, axis=0)
-        #上界和下界
         self.upper = max(self.input_audio)
         self.lower = min(self.input_audio)
         self.pop = np.tile(self.pop, (self.pop_size, 1))
@@ -131,7 +136,7 @@ class Genetic():
         self.target_phrase = target_phrase
         self.funcs = self.setup_graph(self.pop, np.array([toks.index(x) for x in target_phrase]))
         self.params = [BETA0, GAMMA, ALPHA]
-        self.count = 0  #迭代次数
+        self.count = 0
 
     def setup_graph(self, input_audio_batch, target_phrase): 
         batch_size = input_audio_batch.shape[0]
@@ -205,6 +210,7 @@ class Genetic():
             temp[indiv] = _bestPop
         '''
         self.count += 1
+
         mutataFlag = False
         for i in range(0, self.pop_size):
             for j in range(0,self.pop_size):
@@ -215,7 +221,7 @@ class Genetic():
                         beta = self.params[0] * np.exp(-1 * self.params[1] * (r ** 2))
                         #temp[i]a += beta * (temp[j] - temp[i]) + self.params[2] * self.GetNewNestViaLevy(_nowPop,_bestPop, i)
                         #temp[i] += beta * (temp[j] - temp[i]) + self.GetNewNestViaLevy(_nowPop, _bestPop, i)
-                        temp[i] += beta * (temp[j] - temp[i]) + 0.4 * np.random.uniform(-1,1,temp[i].shape[0])
+                        temp[i] += beta * (temp[j] - temp[i]) + 0.4 * np.random.rand(temp[i].shape[0])
                     else:
                         continue
         print("Current iteration number: ", self.count, " Whether the population is mutated in the current iteration: ", mutataFlag, "Alpha of this round:", self.params[2])
@@ -295,34 +301,37 @@ class Genetic():
                 prev_loss = elite_ctc[-1]
 
                     
-            if dist > 2:
-                #next_pop = get_new_pop(elite_pop, elite_pop_scores, self.pop_size)
-                
-                fireflyPop = self.move(pop_scores, self.pop, elite_pop)
-                #fireflypop = mutate_pop(fireflyPop, self.mutation_p, self.noise_stdev)#yth
-                #print(4.1)
-               
-                self.params[2] = self.alpha_new(itr)
-                #print(4.2)
-                
-                fireflyScores, fireflyCtc = self.get_fitness_score(fireflyPop, self.target_phrase, self.input_audio)
-                #print(4.3)
-                elite_ind = np.argsort(pop_scores)[-self.elite_size:]
-                fireflyEliteIndex = np.argsort(fireflyScores)[-self.elite_size:]
-                #print(4.4)
-                '''
-                if pop_scores[elite_ind] > fireflyScores[fireflyEliteIndex]:
-                    elite_pop, elite_pop_scores, elite_ctc = self.pop[elite_ind], pop_scores[elite_ind], ctc[elite_ind]
-                else:
-                    elite_pop, elite_pop_scores, elite_ctc = fireflyPop[fireflyEliteIndex], fireflyScores[fireflyEliteIndex], fireflyCtc[fireflyEliteIndex]
-                    '''
+            #if dist > 2:
+                # next_pop = get_new_pop(elite_pop, elite_pop_scores, self.pop_size)
+
+            fireflyPop = self.move(pop_scores, self.pop, elite_pop)
+            # fireflypop = mutate_pop(fireflyPop, self.mutation_p, self.noise_stdev)#yth
+            # print(4.1)
+            self.params[2] = self.alpha_new(itr)
+            # print(4.2)
+            fireflyScores, fireflyCtc = self.get_fitness_score(fireflyPop, self.target_phrase, self.input_audio)
+            # print(4.3)
+            elite_ind = np.argsort(pop_scores)[-self.elite_size:]
+            fireflyEliteIndex = np.argsort(fireflyScores)[-self.elite_size:]
+            # print(4.4)
+            '''
+            if pop_scores[elite_ind] > fireflyScores[fireflyEliteIndex]:
+                elite_pop, elite_pop_scores, elite_ctc = self.pop[elite_ind], pop_scores[elite_ind], ctc[elite_ind]
+            else:
                 elite_pop, elite_pop_scores, elite_ctc = fireflyPop[fireflyEliteIndex], fireflyScores[fireflyEliteIndex], fireflyCtc[fireflyEliteIndex]
-                #print(4.5)
+                '''
+            elite_pop, elite_pop_scores, elite_ctc = fireflyPop[fireflyEliteIndex], fireflyScores[
+                fireflyEliteIndex], fireflyCtc[fireflyEliteIndex]
+            # print(4.5)
+            prev_loss = elite_ctc[-1]
+            # print(4.6)
+            self.pop = fireflyPop
+            # print(4.7)
+            if (prev_loss - elite_ctc[-1]) < 1:
+                next_pop = get_new_pop(elite_pop, elite_pop_scores, self.pop_size)
+                self.pop = mutate_pop(next_pop, self.mutation_p, self.noise_stdev)
                 prev_loss = elite_ctc[-1]
-                #print(4.6)
-                self.pop = fireflyPop
-                #print(4.7)
-                
+            '''
             else:
 
                 perturbed = np.tile(np.expand_dims(elite_pop[-1], axis=0), (self.num_points_estimate, 1))
@@ -338,7 +347,7 @@ class Genetic():
 
                 self.pop = np.tile(np.expand_dims(modified, axis=0), (self.pop_size, 1))
                 self.delta_for_perturbation *= 0.995
-                
+             '''
                 
             itr += 1
 
@@ -362,4 +371,4 @@ if success:
     print('Success! Wav file stored as', out_wav_file)
     print('Time is:',run_time)
 else:
-	print('Not totally a success! Consider running for more iterations. Intermediate output stored as', out_wav_file)
+    print('Not totally a success! Consider running for more iterations. Intermediate output stored as', out_wav_file)

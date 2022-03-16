@@ -18,14 +18,6 @@ BETA0 = 1
 GAMMA = 1
 ALPHA = 1   #alpha's value will be changed
 
-
-###########################################################################
-# This section of code is credited to:
-## Copyright (C) 2017, Nicholas Carlini <nicholas@carlini.com>.
-
-# Okay, so this is ugly. We don't want DeepSpeech to crash.
-# So we're just going to monkeypatch TF and make some things a no-op.
-# Sue me.
 tf.load_op_library = lambda x: x
 generation_tmp = os.path.exists
 os.path.exists = lambda x: True
@@ -136,7 +128,6 @@ class Genetic():
         self.delta_for_perturbation = 1e3
         self.input_audio = load_wav(input_wave_file).astype(np.float32)
         self.pop = np.expand_dims(self.input_audio, axis=0)
-        #上界和下界
         self.upper = max(self.input_audio)
         self.lower = min(self.input_audio)
         self.pop = np.tile(self.pop, (self.pop_size, 1))
@@ -144,7 +135,7 @@ class Genetic():
         self.target_phrase = target_phrase
         self.funcs = self.setup_graph(self.pop, np.array([toks.index(x) for x in target_phrase]))
         self.params = [BETA0, GAMMA, ALPHA]
-        self.count = 0  #迭代次数
+        self.count = 0
 
     def setup_graph(self, input_audio_batch, target_phrase): 
         batch_size = input_audio_batch.shape[0]
@@ -210,7 +201,7 @@ class Genetic():
         return score, -ctcloss
 
     def move(self, _popFitnessScore, _nowPop, _bestPop):
-        temp = copy.deepcopy(self.pop)  # 使用深度复制副本，防止扰动原数据
+        temp = copy.deepcopy(self.pop)
         temp = np.tile(_bestPop, (self.pop_size, 1))
         temp = mutate_pop(temp, self.mutation_p, self.noise_stdev)
         '''
@@ -218,9 +209,6 @@ class Genetic():
             temp[indiv] = _bestPop
         '''
         self.count += 1
-        #萤火虫算法变异函数
-        #100*100
-        #先计算步长种群
         mutataFlag = False
         for i in range(0, self.pop_size):
             for j in range(0,self.pop_size):
@@ -234,7 +222,7 @@ class Genetic():
                         temp[i] += beta * (temp[j] - temp[i]) + 0.4 * np.random.rand(temp[i].shape[0])
                     else:
                         continue
-        print("当前迭代次数： ", self.count, " 本轮迭代种群是否变异: ", mutataFlag, " 本轮次的阿尔法值: ", self.params[2])
+        print("Current iteration number: ", self.count, " Whether the population is mutated in the current iteration: ", mutataFlag, "Alpha of this round:", self.params[2])
         return temp
 
     def alpha_new(self, _nowItr):
@@ -253,8 +241,8 @@ class Genetic():
                 u = np.random.normal(0, sigma_u, 1)
                 v = np.random.normal(0, sigma_v, 1)
                 Ls = u / ((abs(v)) ** (1 / beta))
-                stepsize = self.params[2] * Ls * (s - Xbest)  # lamuda的设置关系到点的活力程度  方向是由最佳位置确定的  有点类似PSO算法  但是步长不一样
-                s = s + stepsize * np.random.randn(1, len(s))  # 产生满足正态分布的序列
+                stepsize = self.params[2] * Ls * (s - Xbest)
+                s = s + stepsize * np.random.randn(1, len(s))
                 Xt[i, :] = s
                 Xt[i, :] = self.simplebounds(s)
             else:
@@ -314,33 +302,28 @@ class Genetic():
             #if dist > 2:
                 #next_pop = get_new_pop(elite_pop, elite_pop_scores, self.pop_size)
 
-            yinghuoPop = self.move(pop_scores, self.pop, elite_pop)
-            # yinghuopop = mutate_pop(yinghuoPop, self.mutation_p, self.noise_stdev)#yth
+            fireflyPop = self.move(pop_scores, self.pop, elite_pop)
+            # fireflypop = mutate_pop(fireflyPop, self.mutation_p, self.noise_stdev)#yth
             # print(4.1)
-            # 更新阿尔法
             self.params[2] = self.alpha_new(itr)
             # print(4.2)
-            # 计算萤火虫变异后的适应度
-            yinghuoScores, yinghuoCtc = self.get_fitness_score(yinghuoPop, self.target_phrase, self.input_audio)
+            fireflyScores, fireflyCtc = self.get_fitness_score(fireflyPop, self.target_phrase, self.input_audio)
             # print(4.3)
-            # 比较两个适应度，选好的作为精英
-            # 先拿出精英下标
             elite_ind = np.argsort(pop_scores)[-self.elite_size:]
-            yinghuoEliteIndex = np.argsort(yinghuoScores)[-self.elite_size:]
+            fireflyEliteIndex = np.argsort(fireflyScores)[-self.elite_size:]
             # print(4.4)
-            # 再进行比较
             '''
-            if pop_scores[elite_ind] > yinghuoScores[yinghuoEliteIndex]:
+            if pop_scores[elite_ind] > fireflyScores[fireflyEliteIndex]:
                 elite_pop, elite_pop_scores, elite_ctc = self.pop[elite_ind], pop_scores[elite_ind], ctc[elite_ind]
             else:
-                elite_pop, elite_pop_scores, elite_ctc = yinghuoPop[yinghuoEliteIndex], yinghuoScores[yinghuoEliteIndex], yinghuoCtc[yinghuoEliteIndex]
+                elite_pop, elite_pop_scores, elite_ctc = fireflyPop[fireflyEliteIndex], fireflyScores[fireflyEliteIndex], fireflyCtc[fireflyEliteIndex]
                 '''
-            elite_pop, elite_pop_scores, elite_ctc = yinghuoPop[yinghuoEliteIndex], yinghuoScores[yinghuoEliteIndex], \
-                                                     yinghuoCtc[yinghuoEliteIndex]
+            elite_pop, elite_pop_scores, elite_ctc = fireflyPop[fireflyEliteIndex], fireflyScores[fireflyEliteIndex], \
+                                                     fireflyCtc[fireflyEliteIndex]
             # print(4.5)
             prev_loss = elite_ctc[-1]
             # print(4.6)
-            self.pop = yinghuoPop
+            self.pop = fireflyPop
             # print(4.7)
             if (prev_loss - elite_ctc[-1]) < 1:
                 next_pop = get_new_pop(elite_pop, elite_pop_scores, self.pop_size)
