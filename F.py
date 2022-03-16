@@ -14,7 +14,6 @@ from scipy.signal import butter, lfilter
 from time import *
 
 
-#肖锋添加de chang liang
 BETA0 = 1
 GAMMA = 1
 ALPHA = 1   #alpha's value will be changed
