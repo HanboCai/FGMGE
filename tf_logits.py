@@ -1,10 +1,3 @@
-## tf_logits.py -- end-to-end differentable text-to-speech
-##
-## Copyright (C) 2017, Nicholas Carlini <nicholas@carlini.com>.
-##
-## This program is licenced under the BSD 2-Clause licence,
-## contained in the LICENCE file in this directory.
-
 import os
 import sys
 sys.path.append("DeepSpeech")
