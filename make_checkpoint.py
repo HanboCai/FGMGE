@@ -1,10 +1,3 @@
-## make_checkpoint.py -- convert a .pb to a TF session dump
-##
-## Copyright (C) 2017, Nicholas Carlini <nicholas@carlini.com>.
-##
-## This program is licenced under the BSD 2-Clause licence,
-## contained in the LICENCE file in this directory.
-
 from tensorflow.core.framework.graph_pb2 import *
 import numpy as np
 import tensorflow as tf
